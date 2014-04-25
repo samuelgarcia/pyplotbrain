@@ -23,12 +23,15 @@ for color in colors:
     node_coords = np.random.randn(n, 3)*20
     view.add_node(node_coords, color = color, size = 4)
 
-    edge_width = np.zeros((n,n))
-    edge_width[1,2] = 2
-    edge_width[4,7] = 5
-    edge_width[5,2] = 6
+    connection_with = np.zeros((n,n))
+    connection_with[1,2] = 3
+    connection_with[4,7] = 5
+    connection_with[5,2] = 6
+    connection_with[8,5] = 4.5
+    connection_with[2,4] = 6
+    connection_with[8,2] = 6
     
-    view.add_edge(node_coords, width =3, color = color)
+    view.add_edge(node_coords,connection_with,color = color)
 
 
 app.exec_()
