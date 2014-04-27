@@ -30,7 +30,8 @@ class View(QtGui.QWidget):
         
         
         _params = [
-                {'name': 'cortical_mesh', 'type': 'list', 'values': cortical_meshes.keys()}#, 'value': 'BrainMesh_ICBM152'},
+                {'name': 'cortical_mesh', 'type': 'list', 'values': cortical_meshes.keys()},
+                {'name': 'cortical_alpha', 'type': 'float', 'value': .1, 'limits': [0., 1.], 'step' : .01},
             ]
         self.params = Parameter.create(name='params', type='group', children=_params)
         self.tree = ParameterTree(parent = self)
@@ -38,6 +39,8 @@ class View(QtGui.QWidget):
         self.tree.setWindowFlags(QtCore.Qt.Dialog)
         
         self.params.param('cortical_mesh').sigValueChanged.connect(self.plot_mesh)
+        self.params.param('cortical_alpha').sigValueChanged.connect(self.change_alpha_mesh)
+        
         
         self.mesh = None
         
@@ -50,18 +53,27 @@ class View(QtGui.QWidget):
     def plot_mesh(self):
         vertexes, faces = cortical_meshes[self.params['cortical_mesh']]
         if self.mesh is None:
+            alpha =  self.params['cortical_alpha']
             self.mesh = gl.GLMeshItem(vertexes=vertexes, faces=faces, smooth=True, drawFaces=True,
                                                     drawEdges=False,
-                                                    edgeColor=(1,1,1,.2), color = (.4,.4,.4,.5),
+                                                    edgeColor=(1,1,1,.2), 
+                                                    color = (1,1,1,alpha),
                                                     computeNormals = False,
                                                     #~ glOptions='translucent',
                                                     glOptions='additive',
                                                     #~ shader='balloon',
-                                                    shader='shaded', 
+                                                    #~ shader='shaded', 
                                                     )
             self.glview.addItem(self.mesh)
         else:
             self.mesh.setMeshData(vertexes=vertexes, faces=faces)
+            #~ self.mesh.set
+            
+    
+    def change_alpha_mesh(self):
+        alpha =  self.params['cortical_alpha']
+        color = self.mesh.opts['color']
+        self.mesh.setColor(color[:3]+(alpha,))
     
     def add_node(self, coords, color = (1,1,1,0), size = 5):
         sp1 = gl.GLScatterPlotItem(pos=coords, size=size, color=color, pxMode=False)
