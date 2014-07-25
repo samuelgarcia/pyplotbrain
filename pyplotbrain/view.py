@@ -11,7 +11,7 @@ from .plotmesh import cortical_meshes
 
 
 class View(QtGui.QWidget):
-    def __init__(self, parent = None, with_config = False, ):
+    def __init__(self, parent = None, with_config = False, background_color = 'black' ):
         QtGui.QWidget.__init__(self, parent)
         
         self.resize(800,600)
@@ -22,6 +22,7 @@ class View(QtGui.QWidget):
         self.glview = gl.GLViewWidget()
         mainlayout.addWidget(self.glview)
         self.glview .setCameraPosition(160,160,15)
+        
         
         if with_config:
             but =  QtGui.QPushButton('Config', icon = QtGui.QIcon.fromTheme('configure'))
@@ -45,6 +46,17 @@ class View(QtGui.QWidget):
         self.mesh = None
         
         self.params['cortical_mesh'] =  'BrainMesh_ICBM152'
+
+        #~ try:
+            #~ self.glview.setBackgroundColor(background_color)
+        #~ except:
+        print background_color
+        self.glview.opts['bgcolor'] = pg.mkColor(QtGui.QColor(background_color))
+        print self.glview.opts['bgcolor'].blue()
+        print self.glview.opts['bgcolor'].red()
+        #~ self.glview.update()
+        self.glview.resizeGL(self.glview.width(), self.glview.height())
+
         
         
     def open_params(self):
@@ -62,7 +74,7 @@ class View(QtGui.QWidget):
                                                     #~ glOptions='translucent',
                                                     glOptions='additive',
                                                     #~ shader='balloon',
-                                                    #~ shader='shaded', 
+                                                    shader='shaded', 
                                                     )
             self.glview.addItem(self.mesh)
         else:
@@ -85,7 +97,11 @@ class View(QtGui.QWidget):
                 if connection_with[i,j] == 0: continue
                 plt = gl.GLLinePlotItem(pos=np.vstack([node_coords[i], node_coords[j]]), color=color, width = connection_with[i,j])
                 self.glview.addItem(plt)
-                
+    
+    
+    def to_file(self, filename):
+        self.glview.readQImage().save(filename)
+    
 
 
 def addView(**kargs):

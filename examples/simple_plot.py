@@ -8,7 +8,7 @@ import numpy as np
 app = pg.mkQApp()
 
 
-view = ppb.addView(with_config = True)
+view = ppb.addView(with_config = True, background_color = 'blue')
 
 
 colors = [ (1,0,0,.8), 
@@ -33,6 +33,8 @@ for color in colors:
     
     view.add_edge(node_coords,connection_with,color = color)
 
+view.to_file('test1.png')
+view.to_file('test2.jpg')
 
 app.exec_()
 
