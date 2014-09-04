@@ -8,7 +8,12 @@ import numpy as np
 app = pg.mkQApp()
 
 
-view = ppb.addView(with_config = True, background_color = 'blue')
+view = ppb.addView(with_config = True,
+                background_color = 'k',
+                cortical_mesh = 'BrainMesh_ICBM152',
+                cortical_alpha = .6,
+                cortical_color = 'w',
+                )
 
 
 colors = [ (1,0,0,.8), 

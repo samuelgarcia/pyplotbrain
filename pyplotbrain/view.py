@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import os
 
 from pyqtgraph.Qt import QtGui, QtCore
 import pyqtgraph as pg
@@ -9,9 +10,11 @@ from pyqtgraph.parametertree import Parameter, ParameterTree
 
 from .plotmesh import cortical_meshes
 
+from OpenGL.GL import glClearColor, glClear,GL_DEPTH_BUFFER_BIT, GL_COLOR_BUFFER_BIT
+
 
 class View(QtGui.QWidget):
-    def __init__(self, parent = None, with_config = False, background_color = 'black' ):
+    def __init__(self, parent = None, with_config = False, **kargs ):
         QtGui.QWidget.__init__(self, parent)
         
         self.resize(800,600)
@@ -25,54 +28,74 @@ class View(QtGui.QWidget):
         
         
         if with_config:
+            h = QtGui.QHBoxLayout()
+            mainlayout.addLayout(h)
             but =  QtGui.QPushButton('Config', icon = QtGui.QIcon.fromTheme('configure'))
-            mainlayout.addWidget(but)
+            h.addWidget(but)
             but.clicked.connect(self.open_params)
+            but =  QtGui.QPushButton('Save png', icon = QtGui.QIcon.fromTheme('save'))
+            h.addWidget(but)
+            but.clicked.connect(self.open_save_dialog)
+            
         
         
         _params = [
-                {'name': 'cortical_mesh', 'type': 'list', 'values': cortical_meshes.keys()},
+                {'name': 'cortical_mesh', 'type': 'list', 'values': cortical_meshes.keys(), 'value' :  'BrainMesh_ICBM152'},
                 {'name': 'cortical_alpha', 'type': 'float', 'value': .1, 'limits': [0., 1.], 'step' : .01},
+                {'name': 'cortical_color', 'type': 'color', 'value':  'w'},
+                {'name': 'background_color', 'type': 'color', 'value':  'k'},
             ]
         self.params = Parameter.create(name='params', type='group', children=_params)
         self.tree = ParameterTree(parent = self)
         self.tree.setParameters(self.params)
         self.tree.setWindowFlags(QtCore.Qt.Dialog)
         
-        self.params.param('cortical_mesh').sigValueChanged.connect(self.plot_mesh)
-        self.params.param('cortical_alpha').sigValueChanged.connect(self.change_alpha_mesh)
         
         
         self.mesh = None
-        
-        self.params['cortical_mesh'] =  'BrainMesh_ICBM152'
+        for k,v in kargs.items():
+            self.params[k] = v
+        self.change_background_color()
+        self.plot_mesh()
+        self.change_color_mesh()
 
-        #~ try:
-            #~ self.glview.setBackgroundColor(background_color)
-        #~ except:
-        print background_color
-        self.glview.opts['bgcolor'] = pg.mkColor(QtGui.QColor(background_color))
-        print self.glview.opts['bgcolor'].blue()
-        print self.glview.opts['bgcolor'].red()
-        #~ self.glview.update()
+        self.params.param('cortical_mesh').sigValueChanged.connect(self.plot_mesh)
+        self.params.param('cortical_alpha').sigValueChanged.connect(self.change_color_mesh)
+        self.params.param('cortical_color').sigValueChanged.connect(self.change_color_mesh)
+        self.params.param('background_color').sigValueChanged.connect(self.change_background_color)
+
         self.glview.resizeGL(self.glview.width(), self.glview.height())
 
-        
-        
     def open_params(self):
         self.tree.show()
-        
+    
+    def change_background_color(self):
+        background_color =  self.params['background_color']
+        try:
+            self.glview.setBackgroundColor(background_color)
+        except:
+            #~ #FIXME this is buggy in pyqtgrap0.9.8
+            bgcolor = pg.mkColor(QtGui.QColor(background_color))
+            glClearColor(bgcolor.red()/255., bgcolor.green()/255., bgcolor.blue()/255., 1.0)
+            glClear( GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT )
+            self.glview.paintGL()
+            self.glview.update()
+    
+    
     def plot_mesh(self):
         vertexes, faces = cortical_meshes[self.params['cortical_mesh']]
+        alpha =  self.params['cortical_alpha']
+        c = self.params['cortical_color']
+        color = (c.red()/255., c.green()/255.,c.blue()/255.,alpha)
         if self.mesh is None:
-            alpha =  self.params['cortical_alpha']
+            
             self.mesh = gl.GLMeshItem(vertexes=vertexes, faces=faces, smooth=True, drawFaces=True,
                                                     drawEdges=False,
-                                                    edgeColor=(1,1,1,.2), 
-                                                    color = (1,1,1,alpha),
+                                                    edgeColor=(1.,1.,1.,.2), 
+                                                    color = color,
                                                     computeNormals = False,
-                                                    #~ glOptions='translucent',
-                                                    glOptions='additive',
+                                                    glOptions='translucent',
+                                                    #~ glOptions='additive',
                                                     #~ shader='balloon',
                                                     shader='shaded', 
                                                     )
@@ -82,10 +105,11 @@ class View(QtGui.QWidget):
             #~ self.mesh.set
             
     
-    def change_alpha_mesh(self):
+    def change_color_mesh(self):
         alpha =  self.params['cortical_alpha']
-        color = self.mesh.opts['color']
-        self.mesh.setColor(color[:3]+(alpha,))
+        c = self.params['cortical_color']
+        color = (c.red()/255., c.green()/255.,c.blue()/255.,alpha)
+        self.mesh.setColor(color)
     
     def add_node(self, coords, color = (1,1,1,0), size = 5):
         sp1 = gl.GLScatterPlotItem(pos=coords, size=size, color=color, pxMode=False)
@@ -98,6 +122,15 @@ class View(QtGui.QWidget):
                 plt = gl.GLLinePlotItem(pos=np.vstack([node_coords[i], node_coords[j]]), color=color, width = connection_with[i,j])
                 self.glview.addItem(plt)
     
+    def open_save_dialog(self):
+        text = u'Il est où mon côte du Rhône ?'
+        QtGui.QMessageBox.warning(self,u'Fail',text,
+                    QtGui.QMessageBox.Ok , QtGui.QMessageBox.NoButton)
+        pathname =  unicode(QtGui.QDesktopServices.storageLocation(QtGui.QDesktopServices.DesktopLocation))
+        filename = os.path.join(pathname, 'Il est beau le cerveau.png')
+        filename = QtGui.QFileDialog.getSaveFileName( self, u'Save png',  filename, 'PNG (*.png)')
+        if filename:
+            self.to_file( filename)
     
     def to_file(self, filename):
         self.glview.readQImage().save(filename)
